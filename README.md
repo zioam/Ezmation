@@ -30,5 +30,7 @@ Discord: [.zioam.](https://discord.com/users/539962233535594506)
 Gmail: mailto:therealzioam@gmail.com
 
 ## License
+This project is licensed under CC BY-NC 4.0 — free to use and share, but not for commercial purposes.
+Credit must be given to the original author.
 
-MIT © [Maximilian](https://github.com/zioam)
+© 2026 Maximilian Mackena — [GitHub](https://github.com/zioam)
