@@ -11,8 +11,8 @@ I'll keep adding more features in the future so stay in touch for the upcoming u
 
 Author:    Maximilian <therealzioam@gmail.com>
 GitHub:    https://github.com/zioam/macroZ
-License:   MIT License
-Copyright: (c) 2026 Maximilian
+License: CC BY-NC 4.0 — Free to use, not for sale
+Copyright (c) 2026 zioam
 """
 
 """
