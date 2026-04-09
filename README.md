@@ -25,8 +25,9 @@ Compatible with anything that can run Python.
 ## Bugs, Suggestions and Contacts
 
 Any bug that may occur or suggestion you want to share, contact me via: GitHub/Discord/Gmail
-Discord: .zioam.
-Gmail: therealzioam@gmail.com
+
+Discord: [.zioam.](https://discord.com/users/539962233535594506)
+Gmail: mailto:therealzioam@gmail.com
 
 ## License
 
