@@ -36,3 +36,5 @@ Credit must be given to the original author.
 © 2026 Maximilian Mackena — [GitHub](https://github.com/zioam)
 
 <img width="859" height="647" alt="image" src="https://github.com/user-attachments/assets/eaef3971-c82d-4ff7-8cd6-34fcd15fc83c" />
+<img width="859" height="650" alt="image" src="https://github.com/user-attachments/assets/c9e18760-c411-441d-9fc3-b5cab9b53fcd" />
+<img width="859" height="649" alt="image" src="https://github.com/user-attachments/assets/1cfea0cd-c667-4077-88d9-1f02d9f794d3" />
