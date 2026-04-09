@@ -34,3 +34,5 @@ This project is licensed under CC BY-NC 4.0 — free to use and share, but not f
 Credit must be given to the original author.
 
 © 2026 Maximilian Mackena — [GitHub](https://github.com/zioam)
+
+<img width="859" height="647" alt="image" src="https://github.com/user-attachments/assets/eaef3971-c82d-4ff7-8cd6-34fcd15fc83c" />
