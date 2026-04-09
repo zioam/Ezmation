@@ -12,13 +12,13 @@ What can it do?
 
 ## Usage
 
-\```bash
+```bash
 python Ezmation.py
 or
 python3 Ezmation.py
 or
 Whatever your command for running Python is :)
-\```
+```
 
 Compatible with anything that can run Python.
 
