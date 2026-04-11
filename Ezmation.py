@@ -352,7 +352,7 @@ class AutomatorApp(tk.Tk):
         self._capture_target = None   # for keybind capture
         self._capture_var    = None
 
-        self.title("AUTOMATOR")
+        self.title("Ezmation")
         self.geometry("860x620")
         self.minsize(780, 560)
         self.configure(bg=self.C["bg"])
@@ -414,7 +414,7 @@ class AutomatorApp(tk.Tk):
         topbar.pack(fill="x", side="top")
         topbar.pack_propagate(False)
 
-        tk.Label(topbar, text="⚡ AUTOMATOR", bg=C["surface2"],
+        tk.Label(topbar, text="Ezmation", bg=C["surface2"],
                  fg=C["accent"], font=("Courier New", 14, "bold")).pack(side="left", padx=16, pady=10)
 
         # Status pill
@@ -891,7 +891,7 @@ class AutomatorApp(tk.Tk):
         # Store var reference
         setattr(self, f"_kbvar_{cfg_key}", var)
 
-def _start_capture(self, entry, var, btn, cfg_key):
+    def _start_capture(self, entry, var, btn, cfg_key):
         C = self.C
         btn.config(text="Press any key...", bg=C["yellow"], fg=C["bg"])
         self._capture_target = cfg_key
