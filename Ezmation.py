@@ -104,6 +104,12 @@ LIGHT = {
 # ─────────────────────────────────────────────
 #  KEY HELPER
 # ─────────────────────────────────────────────
+def _safe_key(attr):
+    try:
+        return getattr(Key, attr)
+    except AttributeError:
+        return None
+
 SPECIAL_KEYS = {
     "f1": Key.f1, "f2": Key.f2, "f3": Key.f3, "f4": Key.f4,
     "f5": Key.f5, "f6": Key.f6, "f7": Key.f7, "f8": Key.f8,
@@ -116,9 +122,14 @@ SPECIAL_KEYS = {
     "shift_l": Key.shift_l, "shift_r": Key.shift_r,
     "alt_l": Key.alt_l, "alt_r": Key.alt_r,
     "home": Key.home, "end": Key.end, "page_up": Key.page_up,
-    "page_down": Key.page_down, "insert": Key.insert,
-    "caps_lock": Key.caps_lock, "num_lock": Key.num_lock,
+    "page_down": _safe_key("page_down"),
+    "insert":    _safe_key("insert"),
+    "caps_lock": Key.caps_lock,
+    "num_lock":  _safe_key("num_lock"),
 }
+
+# filter non-supported ones in current OS
+SPECIAL_KEYS = {k: v for k, v in SPECIAL_KEYS.items() if v is not None}
 
 MOUSE_BUTTONS = {
     "left click":   Button.left,
