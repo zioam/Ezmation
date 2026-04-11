@@ -891,7 +891,7 @@ class AutomatorApp(tk.Tk):
         # Store var reference
         setattr(self, f"_kbvar_{cfg_key}", var)
 
-def _start_capture(self, entry, var, btn, cfg_key):
+    def _start_capture(self, entry, var, btn, cfg_key):
     C = self.C
     btn.config(text="Press any key...", bg=C["yellow"], fg=C["bg"])
     self._capture_target = cfg_key
