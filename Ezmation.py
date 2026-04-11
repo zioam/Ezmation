@@ -891,31 +891,29 @@ class AutomatorApp(tk.Tk):
         # Store var reference
         setattr(self, f"_kbvar_{cfg_key}", var)
 
-    def _start_capture(self, entry, var, btn, cfg_key):
+def _start_capture(self, entry, var, btn, cfg_key):
         C = self.C
         btn.config(text="Press any key...", bg=C["yellow"], fg=C["bg"])
         self._capture_target = cfg_key
         self._capture_var    = var
         self._capture_btn    = btn
 
-    def on_key(event):
-        # Traducir keysym de tkinter a nombre limpio
-        key = event.keysym
-        if key.startswith("F") and key[1:].isdigit():
-            name = key.upper()       # F6, F7, etc
-        elif len(key) == 1:
-            name = key.upper()
-        else:
-            name = key.upper()
+        def on_key(event):
+            key = event.keysym
+            if key.startswith("F") and key[1:].isdigit():
+                name = key.upper()
+            elif len(key) == 1:
+                name = key.upper()
+            else:
+                name = key.upper()
+            var.set(name)
+            self.config_data[cfg_key] = name
+            btn.config(text="CAPTURE", bg=C["surface2"], fg=C["text"])
+            self.unbind("<KeyPress>")
+            self.focus_set()
 
-        var.set(name)
-        self.config_data[cfg_key] = name
-        btn.config(text="CAPTURE", bg=C["surface2"], fg=C["text"])
-        self.unbind("<KeyPress>")
+        self.bind("<KeyPress>", on_key)
         self.focus_set()
-
-    self.bind("<KeyPress>", on_key)
-    self.focus_set()
 
     def _save_settings(self):
         C = self.C
@@ -923,14 +921,13 @@ class AutomatorApp(tk.Tk):
             var = getattr(self, f"_kbvar_{k}", None)
             if var:
                 self.config_data[k] = var.get()
-        self.config_data["theme"]                = self.theme_var.get()
-        self.config_data["default_interval_ms"]  = self.def_interval_var.get()
-        self.config_data["start_delay_ms"]        = self.def_delay_var.get()
+        self.config_data["theme"]               = self.theme_var.get()
+        self.config_data["default_interval_ms"] = self.def_interval_var.get()
+        self.config_data["start_delay_ms"]       = self.def_delay_var.get()
         save_config(self.config_data)
         self._update_shortcut_label()
         self._setup_hotkeys()
         messagebox.showinfo("Saved", "Settings saved successfully!")
-
     def _update_shortcut_label(self):
         self._shortcut_info_lbl.config(
             text=f"[{self.config_data['shortcut_play']}] play  [{self.config_data['shortcut_stop']}] stop")
