@@ -891,24 +891,31 @@ class AutomatorApp(tk.Tk):
         # Store var reference
         setattr(self, f"_kbvar_{cfg_key}", var)
 
-    def _start_capture(self, entry, var, btn, cfg_key):
-        C = self.C
-        btn.config(text="Press any key...", bg=C["yellow"], fg=C["bg"])
-        self._capture_target = cfg_key
-        self._capture_var    = var
-        self._capture_btn    = btn
+def _start_capture(self, entry, var, btn, cfg_key):
+    C = self.C
+    btn.config(text="Press any key...", bg=C["yellow"], fg=C["bg"])
+    self._capture_target = cfg_key
+    self._capture_var    = var
+    self._capture_btn    = btn
 
-        def on_key(key):
-            name = str(key).replace("Key.", "").replace("'", "").strip()
-            var.set(name.upper())
-            self.config_data[cfg_key] = name.upper()
-            btn.config(text="CAPTURE", bg=C["surface2"], fg=C["text"])
-            self._capture_target = None
-            return False  # stop listener
+    def on_key(event):
+        # Traducir keysym de tkinter a nombre limpio
+        key = event.keysym
+        if key.startswith("F") and key[1:].isdigit():
+            name = key.upper()       # F6, F7, etc
+        elif len(key) == 1:
+            name = key.upper()
+        else:
+            name = key.upper()
 
-        listener = kb.Listener(on_press=on_key)
-        listener.daemon = True
-        listener.start()
+        var.set(name)
+        self.config_data[cfg_key] = name
+        btn.config(text="CAPTURE", bg=C["surface2"], fg=C["text"])
+        self.unbind("<KeyPress>")
+        self.focus_set()
+
+    self.bind("<KeyPress>", on_key)
+    self.focus_set()
 
     def _save_settings(self):
         C = self.C
