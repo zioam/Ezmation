@@ -892,11 +892,11 @@ class AutomatorApp(tk.Tk):
         setattr(self, f"_kbvar_{cfg_key}", var)
 
     def _start_capture(self, entry, var, btn, cfg_key):
-    C = self.C
-    btn.config(text="Press any key...", bg=C["yellow"], fg=C["bg"])
-    self._capture_target = cfg_key
-    self._capture_var    = var
-    self._capture_btn    = btn
+        C = self.C
+        btn.config(text="Press any key...", bg=C["yellow"], fg=C["bg"])
+        self._capture_target = cfg_key
+        self._capture_var    = var
+        self._capture_btn    = btn
 
     def on_key(event):
         # Traducir keysym de tkinter a nombre limpio
