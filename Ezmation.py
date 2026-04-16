@@ -639,6 +639,11 @@ class AutomatorApp(tk.Tk):
         # Add action area
         add_frame = tk.Frame(outer, bg=C["surface2"], highlightbackground=C["border"], highlightthickness=1)
         add_frame.pack(fill="x", pady=(4,0))
+        
+        for i in range(5):
+            add_frame.grid_rowconfigure(i, weight=0)
+            add_frame.grid_rowconfigure(0, weight=1)
+            add_frame.grid_rowconfigure(5, weight=1)
 
         tk.Label(add_frame, text="+ ADD ACTION", bg=C["surface2"], fg=C["accent"],
                  font=("Courier New", 9, "bold")).grid(row=0, column=0, padx=10, pady=(8,2), sticky="w", columnspan=6)
@@ -679,23 +684,41 @@ class AutomatorApp(tk.Tk):
         tk.Label(add_frame, text="Loop", bg=C["surface2"], fg=C["subtext"],
                  font=("Courier New", 8)).grid(row=1, column=5)
         self.add_loop_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(add_frame, variable=self.add_loop_var,
-               bg=C["surface2"], selectcolor=C["entry_bg"]).grid(row=2, column=5)
+        tk.Checkbutton(
+            add_frame,
+            variable=self.add_loop_var,
+            bg=C["surface2"],
+            activebackground=C["surface2"],
+            selectcolor=C["entry_bg"],  # Neutral
+            width=2
+        ).grid(row=2, column=5)
 
         # PARALLEL / TRUE SEQ (16/4/26)
         tk.Label(add_frame, text="Parallel", bg=C["surface2"], fg=C["yellow"],
                  font=("Courier New", 8)).grid(row=1, column=3)
         
         self.add_parallel_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(add_frame, variable=self.add_parallel_var,
-                       bg=C["surface2"], selectcolor=C["entry_bg"]).grid(row=2, column=3)
+        tk.Checkbutton(
+            add_frame,
+            variable=self.add_parallel_var,
+            bg=C["surface2"],
+            activebackground=C["surface2"],
+            selectcolor=C["yellow"],   # 🟡
+            width=2
+        ).grid(row=2, column=3)
         
         tk.Label(add_frame, text="True Seq", bg=C["surface2"], fg=C["green"],
                  font=("Courier New", 8, "bold")).grid(row=3, column=3)
         
         self.add_true_seq_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(add_frame, variable=self.add_true_seq_var,
-                       bg=C["surface2"], selectcolor=C["green"]).grid(row=4, column=3)
+        tk.Checkbutton(
+            add_frame,
+            variable=self.add_true_seq_var,
+            bg=C["surface2"],
+            activebackground=C["surface2"],
+            selectcolor=C["green"],    # 🟢
+            width=2
+        ).grid(row=4, column=3)
         
         # SPAM / SPAM DELAY
         tk.Label(add_frame, text="Spam Count", bg=C["surface2"], fg=C["subtext"],
@@ -719,7 +742,7 @@ class AutomatorApp(tk.Tk):
         tk.Button(add_frame, text="ADD ➕", bg=C["accent"], fg="#fff",
                   font=("Courier New", 10, "bold"),
                   command=self._add_action
-        ).grid(row=1, column=6, rowspan=4, padx=20, sticky="n")
+        ).grid(row=2, column=5, rowspan=3, padx=10, sticky="n")
 
     def _build_value_input(self):
         C = self.C
