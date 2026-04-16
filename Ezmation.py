@@ -660,73 +660,66 @@ class AutomatorApp(tk.Tk):
         self.add_value_frame.grid(row=2, column=1, padx=8, pady=(0,8), sticky="w")
         self._build_value_input()
 
-        # Interval
+        # INTERVAL / REPEAT
         tk.Label(add_frame, text="Interval (ms)", bg=C["surface2"], fg=C["subtext"],
                  font=("Courier New", 8)).grid(row=1, column=2, padx=8, sticky="w")
+        
         self.add_interval_var = tk.IntVar(value=100)
         tk.Spinbox(add_frame, from_=1, to=999999, textvariable=self.add_interval_var,
-                   width=9, bg=C["entry_bg"], fg=C["text"],
-                   buttonbackground=C["surface"], relief="flat",
-                   font=("Courier New", 9)).grid(row=2, column=2, padx=8, pady=(0,8), sticky="w")
-
-        # Loop
-        tk.Label(add_frame, text="Loop", bg=C["surface2"], fg=C["subtext"],
-                 font=("Courier New", 8)).grid(row=1, column=3, padx=8, sticky="w")
-        self.add_loop_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(add_frame, variable=self.add_loop_var,
-                       bg=C["surface2"], selectcolor=C["entry_bg"],
-                       activebackground=C["surface2"]).grid(row=2, column=3, padx=8, pady=(0,8))
-
-        # Repeat
+                   width=9).grid(row=2, column=2, padx=8)
+        
         tk.Label(add_frame, text="Repeat", bg=C["surface2"], fg=C["subtext"],
-                 font=("Courier New", 8)).grid(row=1, column=4, padx=8, sticky="w")
+                 font=("Courier New", 8)).grid(row=3, column=2, padx=8, sticky="w")
+        
         self.add_repeat_var = tk.IntVar(value=1)
         tk.Spinbox(add_frame, from_=1, to=9999, textvariable=self.add_repeat_var,
-                   width=7, bg=C["entry_bg"], fg=C["text"],
-                   buttonbackground=C["surface"], relief="flat",
-                   font=("Courier New", 9)).grid(row=2, column=4, padx=8, pady=(0,8), sticky="w")
+                   width=7).grid(row=4, column=2, padx=8)
 
-        # Parallel
+        # LOOP (isolated)
+        tk.Label(add_frame, text="Loop", bg=C["surface2"], fg=C["subtext"],
+                 font=("Courier New", 8)).grid(row=1, column=5)
+        self.add_loop_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(add_frame, variable=self.add_loop_var,
+               bg=C["surface2"], selectcolor=C["entry_bg"]).grid(row=2, column=5)
+
+        # PARALLEL / TRUE SEQ (16/4/26)
         tk.Label(add_frame, text="Parallel", bg=C["surface2"], fg=C["yellow"],
-                 font=("Courier New", 8, "bold")).grid(row=1, column=5, padx=8, sticky="w")
+                 font=("Courier New", 8)).grid(row=1, column=3)
+        
         self.add_parallel_var = tk.BooleanVar(value=False)
         tk.Checkbutton(add_frame, variable=self.add_parallel_var,
-                       bg=C["surface2"], selectcolor=C["entry_bg"],
-                       activebackground=C["surface2"],
-                       fg=C["yellow"]).grid(row=2, column=5, padx=8, pady=(0,8))
-
-        # TRUE SEQ (16/4/26)
-        tk.Label(add_frame, text="True Seq", bg=C["surface2"], fg=C["accent"],
-                 font=("Courier New", 8)).grid(row=1, column=6, padx=8)
+                       bg=C["surface2"], selectcolor=C["entry_bg"]).grid(row=2, column=3)
+        
+        tk.Label(add_frame, text="True Seq", bg=C["surface2"], fg=C["green"],
+                 font=("Courier New", 8, "bold")).grid(row=3, column=3)
         
         self.add_true_seq_var = tk.BooleanVar(value=False)
         tk.Checkbutton(add_frame, variable=self.add_true_seq_var,
-                       bg=C["surface2"], selectcolor=C["entry_bg"]).grid(row=2, column=6)
+                       bg=C["surface2"], selectcolor=C["green"]).grid(row=4, column=3)
         
-        # SPAM COUNT
-        tk.Label(add_frame, text="Spam x", bg=C["surface2"], fg=C["subtext"],
-                 font=("Courier New", 8)).grid(row=1, column=7, padx=8)
+        # SPAM / SPAM DELAY
+        tk.Label(add_frame, text="Spam Count", bg=C["surface2"], fg=C["subtext"],
+                 font=("Courier New", 8)).grid(row=1, column=4)
         
         self.add_spam_count_var = tk.IntVar(value=1)
         tk.Spinbox(add_frame, from_=1, to=50, textvariable=self.add_spam_count_var,
-                   width=5).grid(row=2, column=7, padx=8)
+                   width=5).grid(row=2, column=4)
         
-        # SPAM DELAY
         tk.Label(add_frame, text="Spam Delay", bg=C["surface2"], fg=C["subtext"],
-                 font=("Courier New", 8)).grid(row=1, column=8, padx=8)
+                 font=("Courier New", 8)).grid(row=3, column=4)
         
         self.add_spam_delay_var = tk.IntVar(value=0)
         tk.Spinbox(add_frame, from_=0, to=1000, textvariable=self.add_spam_delay_var,
-                   width=6).grid(row=2, column=8, padx=8)
+                   width=6).grid(row=4, column=4)
 
-        # Layout spacing column (allows column 9 to expand)
-        add_frame.grid_columnconfigure(9, weight=1)
+        # Layout spacing column (allows column 6 to expand)
+        add_frame.grid_columnconfigure(6, weight=1)
 
         # Add btn
         tk.Button(add_frame, text="ADD ➕", bg=C["accent"], fg="#fff",
-                  font=("Courier New", 9, "bold"), relief="flat",
-                  padx=12, pady=4, cursor="hand2",
-                  command=self._add_action).grid(row=2, column=9, padx=12, pady=(0,8))
+                  font=("Courier New", 10, "bold"),
+                  command=self._add_action
+        ).grid(row=1, column=6, rowspan=4, padx=20, sticky="n")
 
     def _build_value_input(self):
         C = self.C
@@ -819,7 +812,19 @@ class AutomatorApp(tk.Tk):
             mk_lbl("✓" if action.looped else "—", 5, C["green"] if action.looped else C["subtext"]).pack(side="left", padx=4)
             mk_lbl(action.repeat if not action.looped else "∞", 7).pack(side="left", padx=4)
             is_par = getattr(action, "parallel", False)
-            mk_lbl("⚡ PAR" if is_par else "— SEQ", 8, C["yellow"] if is_par else C["subtext"]).pack(side="left", padx=4)
+            is_true = getattr(action, "true_seq", False)
+            
+            if is_par:
+                txt = "PAR"
+                color = C["yellow"]
+            elif is_true:
+                txt = "TRUE SEQ"
+                color = C["green"]
+            else:
+                txt = "SEQ"
+                color = C["subtext"]
+            
+            mk_lbl(txt, 8, color).pack(side="left", padx=4)
 
             # Delete btn
             idx = i
