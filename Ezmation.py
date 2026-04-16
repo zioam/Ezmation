@@ -150,13 +150,21 @@ def parse_key(s):
 # ─────────────────────────────────────────────
 class Action:
     """Represents one step in a macro sequence."""
-    def __init__(self, action_type="key", value="", interval_ms=100, looped=False, repeat=1, parallel=False):
-        self.action_type = action_type   # "key" | "mouse" | "hybrid"
-        self.value       = value         # key string or mouse button string or "key+mouse"
+    def __init__(self, action_type="key", value="", interval_ms=100,
+                 looped=False, repeat=1, parallel=False,
+                 true_seq=False, spam_count=1, spam_delay=0):
+
+        self.action_type = action_type
+        self.value       = value
         self.interval_ms = interval_ms
         self.looped      = looped
-        self.repeat      = repeat        # times to fire (if not looped)
-        self.parallel    = parallel      # True = fires in own thread, independent of sequence
+        self.repeat      = repeat
+        self.parallel    = parallel
+
+        # NEW (16/4/26)
+        self.true_seq   = true_seq
+        self.spam_count = spam_count
+        self.spam_delay = spam_delay
 
     def to_dict(self):
         return self.__dict__
@@ -166,7 +174,6 @@ class Action:
         a = cls()
         a.__dict__.update(d)
         return a
-
 
 # ─────────────────────────────────────────────
 #  EXECUTOR
@@ -263,14 +270,27 @@ class Executor:
                 for action in seq_actions:
                     if self._stop_event.is_set():
                         break
-                    reps = action.repeat if not action.looped else float('inf')
-                    rep_count = 0
-                    while not self._stop_event.is_set():
-                        self._press_action(action)
-                        rep_count += 1
+                    # TRUE SEQ MODE (16/4/26)
+                    if getattr(action, "true_seq", False):
+                        for _ in range(action.spam_count):
+                            if self._stop_event.is_set():
+                                break
+                            self._press_action(action)
+                            if action.spam_delay > 0:
+                                time.sleep(action.spam_delay / 1000)
+                        # delay between actions (important)
                         time.sleep(action.interval_ms / 1000)
-                        if not action.looped and rep_count >= reps:
-                            break
+                    else:
+                        # original behaviour
+                        reps = action.repeat if not action.looped else float('inf')
+                        rep_count = 0
+                        while not self._stop_event.is_set():
+                            self._press_action(action)
+                            rep_count += 1
+                            time.sleep(action.interval_ms / 1000)
+                            if not action.looped and rep_count >= reps:
+                                break
+                            
                 # If no sequential actions, just hold until stop (parallel-only macro)
                 if not seq_actions:
                     if not looped:
@@ -675,11 +695,38 @@ class AutomatorApp(tk.Tk):
                        activebackground=C["surface2"],
                        fg=C["yellow"]).grid(row=2, column=5, padx=8, pady=(0,8))
 
+        # TRUE SEQ (16/4/26)
+        tk.Label(add_frame, text="True Seq", bg=C["surface2"], fg=C["accent"],
+                 font=("Courier New", 8)).grid(row=1, column=6, padx=8)
+        
+        self.add_true_seq_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(add_frame, variable=self.add_true_seq_var,
+                       bg=C["surface2"], selectcolor=C["entry_bg"]).grid(row=2, column=6)
+        
+        # SPAM COUNT
+        tk.Label(add_frame, text="Spam x", bg=C["surface2"], fg=C["subtext"],
+                 font=("Courier New", 8)).grid(row=1, column=7, padx=8)
+        
+        self.add_spam_count_var = tk.IntVar(value=1)
+        tk.Spinbox(add_frame, from_=1, to=50, textvariable=self.add_spam_count_var,
+                   width=5).grid(row=2, column=7, padx=8)
+        
+        # SPAM DELAY
+        tk.Label(add_frame, text="Spam Delay", bg=C["surface2"], fg=C["subtext"],
+                 font=("Courier New", 8)).grid(row=1, column=8, padx=8)
+        
+        self.add_spam_delay_var = tk.IntVar(value=0)
+        tk.Spinbox(add_frame, from_=0, to=1000, textvariable=self.add_spam_delay_var,
+                   width=6).grid(row=2, column=8, padx=8)
+
+        # Layout spacing column (allows column 9 to expand)
+        add_frame.grid_columnconfigure(9, weight=1)
+
         # Add btn
         tk.Button(add_frame, text="ADD ➕", bg=C["accent"], fg="#fff",
                   font=("Courier New", 9, "bold"), relief="flat",
                   padx=12, pady=4, cursor="hand2",
-                  command=self._add_action).grid(row=2, column=6, padx=12, pady=(0,8))
+                  command=self._add_action).grid(row=2, column=9, padx=12, pady=(0,8))
 
     def _build_value_input(self):
         C = self.C
@@ -735,7 +782,12 @@ class AutomatorApp(tk.Tk):
             interval_ms=self.add_interval_var.get(),
             looped=self.add_loop_var.get(),
             repeat=self.add_repeat_var.get(),
-            parallel=self.add_parallel_var.get()
+            parallel=self.add_parallel_var.get(),
+        
+            # NEW (16/4/26)
+            true_seq=getattr(self, "add_true_seq_var", tk.BooleanVar()).get(),
+            spam_count=getattr(self, "add_spam_count_var", tk.IntVar(value=1)).get(),
+            spam_delay=getattr(self, "add_spam_delay_var", tk.IntVar(value=0)).get()
         )
         self.macro_actions.append(action)
         self._refresh_macro_list()
