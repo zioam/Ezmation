@@ -11,7 +11,7 @@ I'll keep adding more features in the future so stay in touch for the upcoming u
 
 Author:    Maximilian <therealzioam@gmail.com>
 GitHub:    https://github.com/zioam/macroZ
-License: CC BY-NC 4.0 — Free to use, not for sale
+License:   CC BY-NC 4.0 — Free to use, not for sale
 Copyright (c) 2026 zioam
 """
 
@@ -20,7 +20,7 @@ AutoClicker + Macro Tool  |  requires: pip install pynput
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, font as tkfont
+from tkinter import ttk, messagebox
 import threading
 import time
 import json
@@ -38,9 +38,6 @@ except ImportError:
     from pynput.keyboard import Key, Controller as KbController
     from pynput.mouse import Button, Controller as MsController
 
-# ─────────────────────────────────────────────
-#  CONFIG FILE
-# ─────────────────────────────────────────────
 CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".automator_config.json")
 
 DEFAULT_CONFIG = {
@@ -49,7 +46,7 @@ DEFAULT_CONFIG = {
     "theme": "dark",
     "default_interval_ms": 100,
     "start_delay_ms": 0,
-    "repeat_count": 0,          # 0 = infinite
+    "repeat_count": 0,
 }
 
 def load_config():
@@ -68,9 +65,6 @@ def save_config(cfg):
     with open(CONFIG_FILE, "w") as f:
         json.dump(cfg, f, indent=2)
 
-# ─────────────────────────────────────────────
-#  COLORS / THEME
-# ─────────────────────────────────────────────
 DARK = {
     "bg":        "#0d0d0f",
     "surface":   "#17171b",
@@ -101,9 +95,6 @@ LIGHT = {
     "entry_bg":  "#f8f8ff",
 }
 
-# ─────────────────────────────────────────────
-#  KEY HELPER
-# ─────────────────────────────────────────────
 def _safe_key(attr):
     try:
         return getattr(Key, attr)
@@ -127,8 +118,6 @@ SPECIAL_KEYS = {
     "caps_lock": Key.caps_lock,
     "num_lock":  _safe_key("num_lock"),
 }
-
-# filter non-supported ones in current OS
 SPECIAL_KEYS = {k: v for k, v in SPECIAL_KEYS.items() if v is not None}
 
 MOUSE_BUTTONS = {
@@ -145,26 +134,20 @@ def parse_key(s):
         return s
     return None
 
-# ─────────────────────────────────────────────
-#  ACTION MODEL
-# ─────────────────────────────────────────────
+
 class Action:
-    """Represents one step in a macro sequence."""
     def __init__(self, action_type="key", value="", interval_ms=100,
                  looped=False, repeat=1, parallel=False,
                  true_seq=False, spam_count=1, spam_delay=0):
-
         self.action_type = action_type
         self.value       = value
         self.interval_ms = interval_ms
         self.looped      = looped
         self.repeat      = repeat
         self.parallel    = parallel
-
-        # NEW (16/4/26)
-        self.true_seq   = true_seq
-        self.spam_count = spam_count
-        self.spam_delay = spam_delay
+        self.true_seq    = true_seq
+        self.spam_count  = spam_count
+        self.spam_delay  = spam_delay
 
     def to_dict(self):
         return self.__dict__
@@ -175,9 +158,7 @@ class Action:
         a.__dict__.update(d)
         return a
 
-# ─────────────────────────────────────────────
-#  EXECUTOR
-# ─────────────────────────────────────────────
+
 class Executor:
     def __init__(self, on_status):
         self._kb  = KbController()
@@ -201,7 +182,6 @@ class Executor:
             self._ms.click(btn)
 
         elif atype == "hybrid":
-            # val = "key|mouse_btn"
             parts = val.split("|")
             k_str = parts[0] if len(parts) > 0 else ""
             m_str = parts[1] if len(parts) > 1 else "left click"
@@ -232,11 +212,9 @@ class Executor:
         self._thread.start()
 
     def run_macro(self, actions: list, looped: bool, global_repeat: int, start_delay_ms=0):
-        """Mixed mode: parallel actions fire in their own threads; sequential ones run in order."""
         self._stop_event.clear()
 
         def _parallel_worker(action: Action):
-            """Runs a single parallel action independently forever (or until stop/repeat)."""
             count = 0
             effective_inf = looped or action.looped
             reps = action.repeat if not action.looped else float('inf')
@@ -251,18 +229,15 @@ class Executor:
             if start_delay_ms > 0:
                 time.sleep(start_delay_ms / 1000)
 
-            # Separate actions into parallel and sequential groups
-            parallel_actions  = [a for a in actions if a.parallel]
-            seq_actions       = [a for a in actions if not a.parallel]
+            parallel_actions = [a for a in actions if a.parallel]
+            seq_actions      = [a for a in actions if not a.parallel]
 
-            # Launch all parallel workers immediately — they run independently
             par_threads = []
             for action in parallel_actions:
                 t = threading.Thread(target=_parallel_worker, args=(action,), daemon=True)
                 t.start()
                 par_threads.append(t)
 
-            # Run sequential actions in order, looping if needed
             loop_count = 0
             while not self._stop_event.is_set():
                 loop_count += 1
@@ -270,7 +245,6 @@ class Executor:
                 for action in seq_actions:
                     if self._stop_event.is_set():
                         break
-                    # B-SEQ (burst sequential) MODE (16/4/26)
                     if getattr(action, "true_seq", False):
                         for _ in range(action.spam_count):
                             if self._stop_event.is_set():
@@ -278,10 +252,8 @@ class Executor:
                             self._press_action(action)
                             if action.spam_delay > 0:
                                 time.sleep(action.spam_delay / 1000)
-                        # delay between actions (important)
                         time.sleep(action.interval_ms / 1000)
                     else:
-                        # original behaviour
                         reps = action.repeat if not action.looped else float('inf')
                         rep_count = 0
                         while not self._stop_event.is_set():
@@ -290,11 +262,9 @@ class Executor:
                             time.sleep(action.interval_ms / 1000)
                             if not action.looped and rep_count >= reps:
                                 break
-                            
-                # If no sequential actions, just hold until stop (parallel-only macro)
+
                 if not seq_actions:
                     if not looped:
-                        # Wait for all parallel threads to finish
                         for t in par_threads:
                             while t.is_alive() and not self._stop_event.is_set():
                                 time.sleep(0.05)
@@ -308,7 +278,7 @@ class Executor:
                 if not looped:
                     break
 
-            self._stop_event.set()  # stop all parallel workers too
+            self._stop_event.set()
             self.on_status("Stopped")
 
         self._thread = threading.Thread(target=_task, daemon=True)
@@ -318,14 +288,11 @@ class Executor:
         self._stop_event.set()
 
 
-# ─────────────────────────────────────────────
-#  GLOBAL HOTKEY LISTENER
-# ─────────────────────────────────────────────
 class HotkeyListener:
     def __init__(self, play_cb, stop_cb, get_keys):
         self.play_cb  = play_cb
         self.stop_cb  = stop_cb
-        self.get_keys = get_keys   # callable -> (play_key_str, stop_key_str)
+        self.get_keys = get_keys
         self._listener = None
         self._pressed  = set()
 
@@ -358,9 +325,6 @@ class HotkeyListener:
             self._listener.stop()
 
 
-# ─────────────────────────────────────────────
-#  MAIN APP
-# ─────────────────────────────────────────────
 class AutomatorApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -369,7 +333,7 @@ class AutomatorApp(tk.Tk):
         self.running = False
         self.executor = Executor(self._on_status_update)
         self.macro_actions: list[Action] = []
-        self._capture_target = None   # for keybind capture
+        self._capture_target = None
         self._capture_var    = None
 
         self.title("Ezmation")
@@ -388,7 +352,6 @@ class AutomatorApp(tk.Tk):
         self.style.theme_use("clam")
         C = self.C
 
-        # 1. Notebook & Tabs
         self.style.configure("TNotebook",
             background=C["bg"], borderwidth=0, tabmargins=[0,0,0,0])
         self.style.configure("TNotebook.Tab",
@@ -398,78 +361,54 @@ class AutomatorApp(tk.Tk):
         self.style.map("TNotebook.Tab",
             background=[("selected", C["surface"]), ("active", C["surface"])],
             foreground=[("selected", C["accent"]), ("active", C["text"])])
-        
-        # 2. Frames & Containers
+
         self.style.configure("TFrame", background=C["bg"])
         self.style.configure("Surface.TFrame", background=C["surface"])
-        
-        # This fixes the "Main Container" border/glow issue
-        self.style.configure("Surface2.TFrame", 
-            background=C["surface2"],
-            bordercolor=C["border"],
-            lightcolor=C["surface2"],
-            darkcolor=C["surface2"])
+        self.style.configure("Surface2.TFrame",
+            background=C["surface2"], bordercolor=C["border"],
+            lightcolor=C["surface2"], darkcolor=C["surface2"])
         self.style.map("Surface2.TFrame",
             bordercolor=[("focus", C["border"]), ("active", C["border"])])
-        
-        # 3. Labels
+
         self.style.configure("TLabel",
-            background=C["bg"], foreground=C["text"],
-            font=("Courier New", 9))
+            background=C["bg"], foreground=C["text"], font=("Courier New", 9))
         self.style.configure("Sub.TLabel",
-            background=C["surface"], foreground=C["subtext"],
-            font=("Courier New", 8))
+            background=C["surface"], foreground=C["subtext"], font=("Courier New", 8))
         self.style.configure("Title.TLabel",
-            background=C["bg"], foreground=C["accent"],
-            font=("Courier New", 13, "bold"))
+            background=C["bg"], foreground=C["accent"], font=("Courier New", 13, "bold"))
         self.style.configure("Status.TLabel",
-            background=C["surface2"], foreground=C["green"],
-            font=("Courier New", 9))
-        
-        # 4. Combobox (The "Peak" Killer)
+            background=C["surface2"], foreground=C["green"], font=("Courier New", 9))
+
         self.style.configure("TCombobox",
-            fieldbackground=C["entry_bg"],
-            background=C["entry_bg"],
-            foreground=C["text"],
-            arrowcolor="#ffffff",
-            bordercolor=C["border"],
-            # Flattening the 3D edges to stop white corner leaks:
-            lightcolor=C["entry_bg"],
-            darkcolor=C["entry_bg"],
-            focusfill=C["entry_bg"],
-            selectbackground=C["entry_bg"]) 
-        
+            fieldbackground=C["entry_bg"], background=C["entry_bg"],
+            foreground=C["text"], arrowcolor="#ffffff", bordercolor=C["border"],
+            lightcolor=C["entry_bg"], darkcolor=C["entry_bg"],
+            focusfill=C["entry_bg"], selectbackground=C["entry_bg"])
         self.style.map("TCombobox",
             fieldbackground=[("readonly", C["entry_bg"]), ("focus", C["entry_bg"])],
             foreground=[("readonly", C["text"]), ("focus", C["text"])],
             bordercolor=[("focus", C["border"]), ("active", C["border"])],
             lightcolor=[("focus", C["entry_bg"])],
             darkcolor=[("focus", C["entry_bg"])])
-        
-        # Dropdown Listbox Styling (The Popup)
+
         self.option_add("*TCombobox*Listbox*Background", C["entry_bg"])
         self.option_add("*TCombobox*Listbox*Foreground", C["text"])
         self.option_add("*TCombobox*Listbox*selectBackground", C["accent"])
         self.option_add("*TCombobox*Listbox*selectForeground", C["bg"])
         self.option_add("*TCombobox*Listbox*font", ("Courier New", 9))
         self.option_add("*TCombobox*Listbox*borderwidth", 0)
-        
-        # 5. Checkbuttons & Spinboxes
+
         self.style.configure("TCheckbutton",
-            background=C["surface"], foreground=C["text"],
-            font=("Courier New", 9))
+            background=C["surface"], foreground=C["text"], font=("Courier New", 9))
         self.style.map("TCheckbutton",
             background=[("active", C["surface"])])
-        
         self.style.configure("TSpinbox",
             fieldbackground=C["entry_bg"], background=C["surface"],
             foreground=C["text"], borderwidth=1)
 
-    # ──────── TOP BAR ────────
     def _build_ui(self):
         C = self.C
 
-        # Top bar
         topbar = tk.Frame(self, bg=C["surface2"], height=48)
         topbar.pack(fill="x", side="top")
         topbar.pack_propagate(False)
@@ -477,20 +416,17 @@ class AutomatorApp(tk.Tk):
         tk.Label(topbar, text="Ezmation", bg=C["surface2"],
                  fg=C["accent"], font=("Courier New", 14, "bold")).pack(side="left", padx=16, pady=10)
 
-        # Status pill
         self.status_var = tk.StringVar(value="● IDLE")
         self.status_lbl = tk.Label(topbar, textvariable=self.status_var,
             bg=C["surface2"], fg=C["subtext"], font=("Courier New", 9))
         self.status_lbl.pack(side="left", padx=8)
 
-        # Play / Stop buttons top right
         btn_frame = tk.Frame(topbar, bg=C["surface2"])
         btn_frame.pack(side="right", padx=12, pady=6)
 
         self.play_btn = tk.Button(btn_frame, text="▶  PLAY",
             bg=C["green"], fg=C["bg"], font=("Courier New", 9, "bold"),
-            relief="flat", padx=14, pady=4, cursor="hand2",
-            command=self._play)
+            relief="flat", padx=14, pady=4, cursor="hand2", command=self._play)
         self.play_btn.pack(side="left", padx=4)
 
         self.stop_btn = tk.Button(btn_frame, text="■  STOP",
@@ -505,9 +441,8 @@ class AutomatorApp(tk.Tk):
         shortcut_info.pack(side="right", padx=8)
         self._shortcut_info_lbl = shortcut_info
 
-        # Notebook
         self.nb = ttk.Notebook(self)
-        self.nb.pack(fill="both", expand=True, padx=0, pady=0)
+        self.nb.pack(fill="both", expand=True)
 
         self._tab_autoclicker = ttk.Frame(self.nb, style="TFrame")
         self._tab_macro       = ttk.Frame(self.nb, style="TFrame")
@@ -521,7 +456,6 @@ class AutomatorApp(tk.Tk):
         self._build_macro_tab()
         self._build_settings_tab()
 
-        # Bottom status bar
         statusbar = tk.Frame(self, bg=C["surface2"], height=24)
         statusbar.pack(fill="x", side="bottom")
         statusbar.pack_propagate(False)
@@ -530,7 +464,7 @@ class AutomatorApp(tk.Tk):
                  bg=C["surface2"], fg=C["subtext"],
                  font=("Courier New", 8)).pack(side="left", padx=10, pady=3)
 
-    # ──────── AUTOCLICKER TAB ────────
+    # ── AUTOCLICKER TAB ──
     def _build_autoclicker_tab(self):
         C = self.C
         tab = self._tab_autoclicker
@@ -539,7 +473,6 @@ class AutomatorApp(tk.Tk):
         outer = tk.Frame(tab, bg=C["bg"])
         outer.pack(fill="both", expand=True, padx=20, pady=16)
 
-        # Title
         tk.Label(outer, text="AUTO CLICKER", bg=C["bg"], fg=C["accent"],
                  font=("Courier New", 12, "bold")).grid(row=0, column=0, columnspan=4, sticky="w", pady=(0,12))
 
@@ -548,56 +481,46 @@ class AutomatorApp(tk.Tk):
         card.grid(row=1, column=0, columnspan=4, sticky="ew", padx=0, pady=4)
         outer.columnconfigure(0, weight=1)
 
-        # ── Mouse button
         row = 0
         tk.Label(card, text="Mouse Button", bg=C["surface"], fg=C["subtext"],
                  font=("Courier New", 8)).grid(row=row, column=0, sticky="w", padx=16, pady=(14,2))
         self.ac_button_var = tk.StringVar(value="Left Click")
-        btn_combo = ttk.Combobox(card, textvariable=self.ac_button_var,
-                                  values=["Left Click", "Right Click", "Middle Click"],
-                                  state="readonly", width=18)
-        btn_combo.grid(row=row+1, column=0, sticky="w", padx=16, pady=(0,10))
+        ttk.Combobox(card, textvariable=self.ac_button_var,
+                     values=["Left Click", "Right Click", "Middle Click"],
+                     state="readonly", width=18).grid(row=row+1, column=0, sticky="w", padx=16, pady=(0,10))
 
-        # ── Interval
         tk.Label(card, text="Interval (ms)", bg=C["surface"], fg=C["subtext"],
                  font=("Courier New", 8)).grid(row=row, column=1, sticky="w", padx=16, pady=(14,2))
         self.ac_interval_var = tk.IntVar(value=self.config_data["default_interval_ms"])
-        ac_spin = tk.Spinbox(card, from_=1, to=999999, textvariable=self.ac_interval_var,
-                              width=10, bg=C["entry_bg"], fg=C["text"],
-                              buttonbackground=C["surface2"],
-                              relief="flat", font=("Courier New", 10))
-        ac_spin.grid(row=row+1, column=1, sticky="w", padx=16)
+        tk.Spinbox(card, from_=1, to=999999, textvariable=self.ac_interval_var,
+                   width=10, bg=C["entry_bg"], fg=C["text"],
+                   buttonbackground=C["surface2"], relief="flat",
+                   font=("Courier New", 10)).grid(row=row+1, column=1, sticky="w", padx=16)
 
-        # ── Start delay
         tk.Label(card, text="Start Delay (ms)", bg=C["surface"], fg=C["subtext"],
                  font=("Courier New", 8)).grid(row=row, column=2, sticky="w", padx=16, pady=(14,2))
         self.ac_delay_var = tk.IntVar(value=self.config_data["start_delay_ms"])
-        ac_delay = tk.Spinbox(card, from_=0, to=999999, textvariable=self.ac_delay_var,
-                               width=10, bg=C["entry_bg"], fg=C["text"],
-                               buttonbackground=C["surface2"],
-                               relief="flat", font=("Courier New", 10))
-        ac_delay.grid(row=row+1, column=2, sticky="w", padx=16)
+        tk.Spinbox(card, from_=0, to=999999, textvariable=self.ac_delay_var,
+                   width=10, bg=C["entry_bg"], fg=C["text"],
+                   buttonbackground=C["surface2"], relief="flat",
+                   font=("Courier New", 10)).grid(row=row+1, column=2, sticky="w", padx=16)
 
-        # ── Loop / Repeat
         row = 2
         self.ac_loop_var = tk.BooleanVar(value=True)
-        loop_chk = tk.Checkbutton(card, text="Loop (infinite)", variable=self.ac_loop_var,
-                                   bg=C["surface"], fg=C["text"], selectcolor=C["entry_bg"],
-                                   activebackground=C["surface"], activeforeground=C["accent"],
-                                   font=("Courier New", 9), command=self._ac_loop_toggle)
-        loop_chk.grid(row=row, column=0, sticky="w", padx=16, pady=(8,4))
+        tk.Checkbutton(card, text="Loop (infinite)", variable=self.ac_loop_var,
+                       bg=C["surface"], fg=C["text"], selectcolor=C["entry_bg"],
+                       activebackground=C["surface"], activeforeground=C["accent"],
+                       font=("Courier New", 9), command=self._ac_loop_toggle).grid(
+                           row=row, column=0, sticky="w", padx=16, pady=(8,4))
 
         tk.Label(card, text="Repeat Count (if not looped)", bg=C["surface"], fg=C["subtext"],
                  font=("Courier New", 8)).grid(row=row, column=1, sticky="w", padx=16)
         self.ac_repeat_var = tk.IntVar(value=10)
         self.ac_repeat_spin = tk.Spinbox(card, from_=1, to=999999, textvariable=self.ac_repeat_var,
-                                          width=10, bg=C["entry_bg"], fg=C["text"],
-                                          buttonbackground=C["surface2"],
-                                          relief="flat", font=("Courier New", 10),
-                                          state="disabled")
+                                         width=10, bg=C["entry_bg"], fg=C["text"],
+                                         buttonbackground=C["surface2"], relief="flat",
+                                         font=("Courier New", 10), state="disabled")
         self.ac_repeat_spin.grid(row=row, column=2, sticky="w", padx=16, pady=(8,4))
-
-        # padding bottom
         tk.Label(card, text="", bg=C["surface"]).grid(row=row+1, column=0, pady=8)
 
     def _ac_loop_toggle(self):
@@ -606,30 +529,28 @@ class AutomatorApp(tk.Tk):
         else:
             self.ac_repeat_spin.config(state="normal")
 
-# ──────── MACRO TAB ────────
+    # ── MACRO TAB ──
     def _build_macro_tab(self):
         C = self.C
         tab = self._tab_macro
 
-        self.add_type_var = tk.StringVar(value="key")
-        self.add_interval_var = tk.IntVar(value=100)
-        self.add_repeat_var = tk.IntVar(value=1)
-        self.add_parallel_var = tk.BooleanVar(value=False) # Move this UP
-        self.add_true_seq_var = tk.BooleanVar(value=False) # Move this UP
-        self.add_loop_var = tk.BooleanVar(value=False)     # Move this UP
+        # All vars declared once here
+        self.add_type_var       = tk.StringVar(value="key")
+        self.add_interval_var   = tk.IntVar(value=100)
+        self.add_repeat_var     = tk.IntVar(value=1)
+        self.add_parallel_var   = tk.BooleanVar(value=False)
+        self.add_true_seq_var   = tk.BooleanVar(value=False)
+        self.add_loop_var       = tk.BooleanVar(value=False)
         self.add_spam_count_var = tk.IntVar(value=1)
         self.add_spam_delay_var = tk.IntVar(value=0)
 
         outer = tk.Frame(tab, bg=C["bg"])
         outer.pack(fill="both", expand=True, padx=20, pady=16)
 
-        # Title row
-        title_row = tk.Frame(outer, bg=C["bg"])
-        title_row.pack(fill="x")
-        tk.Label(title_row, text="MACRO SEQUENCE", bg=C["bg"], fg=C["accent"],
-                 font=("Courier New", 12, "bold")).pack(side="left")
+        tk.Label(outer, text="MACRO SEQUENCE", bg=C["bg"], fg=C["accent"],
+                 font=("Courier New", 12, "bold")).pack(anchor="w")
 
-        # Global loop options
+        # Global options bar
         gopt = tk.Frame(outer, bg=C["surface"], highlightbackground=C["border"], highlightthickness=1)
         gopt.pack(fill="x", pady=(8,0))
 
@@ -638,173 +559,150 @@ class AutomatorApp(tk.Tk):
         self.macro_loop_var = tk.BooleanVar(value=True)
         tk.Checkbutton(gopt, text="Loop Macro", variable=self.macro_loop_var,
                        bg=C["surface"], fg=C["text"], selectcolor=C["entry_bg"],
-                       activebackground=C["surface"],
-                       font=("Courier New", 9), command=self._macro_loop_toggle).pack(side="left", padx=6)
-
+                       activebackground=C["surface"], font=("Courier New", 9),
+                       command=self._macro_loop_toggle).pack(side="left", padx=6)
         tk.Label(gopt, text="Repeat:", bg=C["surface"], fg=C["subtext"],
                  font=("Courier New", 8)).pack(side="left", padx=(16,4))
         self.macro_repeat_var = tk.IntVar(value=1)
         self.macro_repeat_spin = tk.Spinbox(gopt, from_=1, to=9999,
-                                             textvariable=self.macro_repeat_var,
-                                             width=6, bg=C["entry_bg"], fg=C["text"],
-                                             buttonbackground=C["surface2"],
-                                             relief="flat", font=("Courier New", 9),
-                                             state="disabled")
+                                            textvariable=self.macro_repeat_var, width=6,
+                                            bg=C["entry_bg"], fg=C["text"],
+                                            buttonbackground=C["surface2"], relief="flat",
+                                            font=("Courier New", 9), state="disabled")
         self.macro_repeat_spin.pack(side="left")
-
         tk.Label(gopt, text="Start Delay (ms):", bg=C["surface"], fg=C["subtext"],
                  font=("Courier New", 8)).pack(side="left", padx=(16,4))
         self.macro_delay_var = tk.IntVar(value=0)
         tk.Spinbox(gopt, from_=0, to=999999, textvariable=self.macro_delay_var,
                    width=7, bg=C["entry_bg"], fg=C["text"],
-                   buttonbackground=C["surface2"],
-                   relief="flat", font=("Courier New", 9)).pack(side="left")
+                   buttonbackground=C["surface2"], relief="flat",
+                   font=("Courier New", 9)).pack(side="left")
 
-        # Action list area
+        # Action list
         list_frame = tk.Frame(outer, bg=C["surface"], highlightbackground=C["border"], highlightthickness=1)
         list_frame.pack(fill="both", expand=True, pady=(6,0))
 
-        # Header
         hdr = tk.Frame(list_frame, bg=C["surface2"])
         hdr.pack(fill="x")
-        for txt, w in [("#", 3), ("TYPE", 8), ("VALUE", 18), ("INTERVAL", 11), ("LOOP", 5), ("REPEAT", 7), ("PARALLEL", 8)]:
+        for txt, w in [("#", 3), ("TYPE", 8), ("VALUE", 18), ("INTERVAL", 11),
+                       ("LOOP", 5), ("REPEAT", 7), ("MODE", 8)]:
             tk.Label(hdr, text=txt, bg=C["surface2"], fg=C["subtext"],
                      font=("Courier New", 8, "bold"), width=w, anchor="w").pack(side="left", padx=4, pady=4)
 
-        # Scrollable list
         canvas = tk.Canvas(list_frame, bg=C["surface"], highlightthickness=0)
         scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=canvas.yview)
         self.macro_list_inner = tk.Frame(canvas, bg=C["surface"])
-
         self.macro_list_inner.bind("<Configure>",
             lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=self.macro_list_inner, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
-
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         self._macro_canvas = canvas
 
-# --- ADD ACTION AREA (COMPACT & CENTERED) ---
-        border_params = {
-                    "highlightbackground": C["border"],
-                    "highlightthickness": 1,
-                    "highlightcolor": C["accent"],
-                    "bd": 0,
-                }
-        
-        add_frame = tk.Frame(outer, bg=C["surface2"], highlightbackground=C["border"], highlightthickness=1)
+        # ── Add action area ──
+        bp = {"highlightbackground": C["border"], "highlightthickness": 1,
+              "highlightcolor": C["accent"], "bd": 0}
+
+        add_frame = tk.Frame(outer, bg=C["surface2"],
+                             highlightbackground=C["border"], highlightthickness=1)
         add_frame.pack(fill="x", pady=(4,0))
 
-        # Column weight configuration
-        add_frame.grid_columnconfigure(6, weight=1)
+        def hdr_lbl(txt, r, c, color=None, anchor="sw"):
+            tk.Label(add_frame, text=txt, bg=C["surface2"],
+                     fg=color or C["subtext"], font=("Courier New", 8)).grid(
+                         row=r, column=c, padx=8, pady=(4,0), sticky=anchor)
 
-        # Helper for header labels (Row 1 and 3)
-        def add_hdr(txt, r, c, color=None, anchor="sw"):
-            fg_color = color if color else C["subtext"]
-            tk.Label(add_frame, text=txt, bg=C["surface2"], fg=fg_color,
-                     font=("Courier New", 8)).grid(row=r, column=c, padx=8, pady=(4,0), sticky=anchor)
+        # Col 0 — Type + Interval
+        hdr_lbl("Type", 1, 0)
+        _type_cb = ttk.Combobox(add_frame, textvariable=self.add_type_var,
+                                values=["key", "mouse", "hybrid"],
+                                state="readonly", width=10)
+        _type_cb.grid(row=2, column=0, padx=8, pady=(0,2), sticky="nw")
+        # FIX 1: bind type change to rebuild the value input widget
+        _type_cb.bind("<<ComboboxSelected>>", self._add_type_changed)
 
-        # --- COL 0: TYPE & INTERVAL ---
-        add_hdr("Type", 1, 0)
-        self.add_type_var = tk.StringVar(value="key")
-        ttk.Combobox(add_frame, textvariable=self.add_type_var, values=["key", "mouse", "hybrid"], 
-                     state="readonly", width=10).grid(row=2, column=0, padx=8, pady=(0,2), sticky="nw")
-        
-        add_hdr("Interval (ms)", 3, 0)
-        self.add_interval_var = tk.IntVar(value=100)
-        tk.Spinbox(add_frame, from_=1, to=999999, textvariable=self.add_interval_var, width=9, 
-                   bg=C["entry_bg"], fg=C["text"], buttonbackground=C["surface2"],
-                   relief="flat", font=("Courier New", 9),**border_params).grid(row=4, column=0, padx=8, pady=(0,8), sticky="nw")
+        hdr_lbl("Interval (ms)", 3, 0)
+        tk.Spinbox(add_frame, from_=1, to=999999, textvariable=self.add_interval_var,
+                   width=9, bg=C["entry_bg"], fg=C["text"],
+                   buttonbackground=C["surface2"], relief="flat",
+                   font=("Courier New", 9), **bp).grid(row=4, column=0, padx=8, pady=(0,8), sticky="nw")
 
-        # --- COL 1: KEY / BUTTON & REPEAT ---
-        add_hdr("Key / Button", 1, 1)
+        # Col 1 — Key/Button (dynamic) + Repeat
+        hdr_lbl("Key / Button", 1, 1)
         self.add_value_frame = tk.Frame(add_frame, bg=C["surface2"])
         self.add_value_frame.grid(row=2, column=1, padx=8, pady=(0,2), sticky="nw")
-        self.add_key_entry = tk.Entry(self.add_value_frame, 
-                                     bg=C["entry_bg"], fg=C["text"],
-                                     insertbackground=C["text"], # Cursor color
-                                     font=("Courier New", 9),
-                                     width=15,
-                                     **border_params)
-        self.add_key_entry.pack()
-        
-        add_hdr("Repeat", 3, 1)
-        self.add_repeat_var = tk.IntVar(value=1)
-        tk.Spinbox(add_frame, from_=1, to=9999, textvariable=self.add_repeat_var, width=12, 
-                   bg=C["entry_bg"], fg=C["text"], buttonbackground=C["surface2"],
-                   relief="flat", font=("Courier New", 9),**border_params).grid(row=4, column=1, padx=8, pady=(0,8), sticky="nw")
+        # FIX 2: NO static widget here — _build_value_input() handles it
 
-# --- COL 2: PARALLEL & B-SEQ ---
-        add_hdr("Parallel", 1, 2, C["yellow"]) # Re-added text
-        tk.Checkbutton(add_frame, variable=self.add_parallel_var, 
-                            bg=C["entry_bg"], 
-                            selectcolor=C["yellow"], 
-                            activebackground="#444444",
-                            indicatoron=0, width=4, height=1,
-                            **border_params).grid(row=2, column=2, padx=8, pady=(0,2))
-        
-        add_hdr("B-Seq", 3, 2, C["green"], anchor="n") # Added anchor="n"
-        tk.Checkbutton(add_frame, variable=self.add_true_seq_var, 
-                            bg=C["entry_bg"], 
-                            selectcolor=C["green"], 
-                            activebackground="#444444",
-                            indicatoron=0, width=4, height=1,
-                            **border_params).grid(row=4, column=2, padx=8, pady=(0,8), sticky="n")
+        hdr_lbl("Repeat", 3, 1)
+        tk.Spinbox(add_frame, from_=1, to=9999, textvariable=self.add_repeat_var,
+                   width=12, bg=C["entry_bg"], fg=C["text"],
+                   buttonbackground=C["surface2"], relief="flat",
+                   font=("Courier New", 9), **bp).grid(row=4, column=1, padx=8, pady=(0,8), sticky="nw")
 
-        # --- COL 3: SPAM COUNT & DELAY ---
-        add_hdr("Spam Count", 1, 3)
-        self.add_spam_count_var = tk.IntVar(value=1)
-        tk.Spinbox(add_frame, from_=1, to=50, textvariable=self.add_spam_count_var, width=6, 
-                   bg=C["entry_bg"], fg=C["text"], buttonbackground=C["surface2"],
-                   relief="flat", font=("Courier New", 9),**border_params).grid(row=2, column=3, padx=8, pady=(0,2), sticky="nw")
-        
-        add_hdr("Spam Delay", 3, 3) # Shortened text slightly for better fit
-        self.add_spam_delay_var = tk.IntVar(value=0)
-        tk.Spinbox(add_frame, from_=0, to=1000, textvariable=self.add_spam_delay_var, width=6, 
-                   bg=C["entry_bg"], fg=C["text"], buttonbackground=C["surface2"],
-                   relief="flat", font=("Courier New", 9),**border_params).grid(row=4, column=3, padx=8, pady=(0,8), sticky="nw")
+        # Col 2 — Parallel + B-Seq
+        hdr_lbl("Parallel", 1, 2, C["yellow"])
+        tk.Checkbutton(add_frame, variable=self.add_parallel_var,
+                       bg=C["entry_bg"], selectcolor=C["yellow"],
+                       activebackground="#444444", indicatoron=0, width=4, height=1,
+                       **bp).grid(row=2, column=2, padx=8, pady=(0,2))
+        hdr_lbl("B-Seq", 3, 2, C["green"], anchor="n")
+        tk.Checkbutton(add_frame, variable=self.add_true_seq_var,
+                       bg=C["entry_bg"], selectcolor=C["green"],
+                       activebackground="#444444", indicatoron=0, width=4, height=1,
+                       **bp).grid(row=4, column=2, padx=8, pady=(0,8), sticky="n")
 
-        # --- COL 4: LOOP & ADD BTN ---
-        # Using 'n' for sticky and consistent padx to keep the column centered
-        add_hdr("Loop", 1, 4, C["accent"], anchor="n") 
-        tk.Checkbutton(add_frame, variable=self.add_loop_var, 
-                            bg=C["entry_bg"], 
-                            selectcolor=C["accent"], 
-                            activebackground="#444444",
-                            indicatoron=0, width=4, height=1,
-                            **border_params).grid(row=2, column=4, padx=20, pady=(0,2), sticky="n")
+        # Col 3 — Spam Count + Spam Delay
+        hdr_lbl("Spam Count", 1, 3)
+        tk.Spinbox(add_frame, from_=1, to=50, textvariable=self.add_spam_count_var,
+                   width=6, bg=C["entry_bg"], fg=C["text"],
+                   buttonbackground=C["surface2"], relief="flat",
+                   font=("Courier New", 9), **bp).grid(row=2, column=3, padx=8, pady=(0,2), sticky="nw")
+        hdr_lbl("Spam Delay", 3, 3)
+        tk.Spinbox(add_frame, from_=0, to=1000, textvariable=self.add_spam_delay_var,
+                   width=6, bg=C["entry_bg"], fg=C["text"],
+                   buttonbackground=C["surface2"], relief="flat",
+                   font=("Courier New", 9), **bp).grid(row=4, column=3, padx=8, pady=(0,8), sticky="nw")
 
-        tk.Button(add_frame, text="ADD ➕", bg=C["accent"], fg="#fff", font=("Courier New", 9, "bold"),
-                  relief="flat", padx=10, pady=2, command=self._add_action).grid(row=4, column=4, padx=20, pady=(0,8), sticky="we")
+        # Col 4 — Loop + ADD button
+        hdr_lbl("Loop", 1, 4, C["accent"], anchor="n")
+        tk.Checkbutton(add_frame, variable=self.add_loop_var,
+                       bg=C["entry_bg"], selectcolor=C["accent"],
+                       activebackground="#444444", indicatoron=0, width=4, height=1,
+                       **bp).grid(row=2, column=4, padx=20, pady=(0,2), sticky="n")
+        tk.Button(add_frame, text="ADD ➕", bg=C["accent"], fg="#fff",
+                  font=("Courier New", 9, "bold"), relief="flat", padx=10, pady=2,
+                  command=self._add_action).grid(row=4, column=4, padx=20, pady=(0,8), sticky="we")
 
-        tk.Button(add_frame, text="ADD ➕", bg=C["accent"], fg="#fff", font=("Courier New", 9, "bold"),
-                  relief="flat", padx=10, pady=2, command=self._add_action).grid(row=4, column=4, padx=20, pady=(0,8), sticky="we")
-
-        tk.Button(add_frame, text="ADD ➕", bg=C["accent"], fg="#fff", font=("Courier New", 9, "bold"),
-                  relief="flat", padx=10, pady=2, command=self._add_action).grid(row=4, column=4, padx=20, pady=(0,8), sticky="we")
-
-        # Extra spacer column
         add_frame.grid_columnconfigure(5, weight=1)
 
+        # FIX 3: initialize with the default "key" input
+        self._build_value_input()
+
     def _build_value_input(self):
+        """Rebuild the Key/Button input widget based on current action type."""
         C = self.C
         for w in self.add_value_frame.winfo_children():
             w.destroy()
+
+        bp = {"highlightbackground": C["border"], "highlightthickness": 1, "bd": 0}
         atype = self.add_type_var.get()
+
         if atype == "key":
             self.add_key_var = tk.StringVar(value="space")
-            e = tk.Entry(self.add_value_frame, textvariable=self.add_key_var,
-                         bg=C["entry_bg"], fg=C["text"], insertbackground=C["text"],
-                         relief="flat", font=("Courier New", 10), width=14)
-            e.pack(side="left")
+            tk.Entry(self.add_value_frame, textvariable=self.add_key_var,
+                     bg=C["entry_bg"], fg=C["text"], insertbackground=C["text"],
+                     relief="flat", font=("Courier New", 10), width=14, **bp).pack(side="left")
             tk.Label(self.add_value_frame, text="(e.g. space, f5, a)",
-                     bg=C["surface2"], fg=C["subtext"], font=("Courier New", 7)).pack(side="left", padx=4)
+                     bg=C["surface2"], fg=C["subtext"],
+                     font=("Courier New", 7)).pack(side="left", padx=4)
+
         elif atype == "mouse":
             self.add_mouse_var = tk.StringVar(value="left click")
             ttk.Combobox(self.add_value_frame, textvariable=self.add_mouse_var,
                          values=list(MOUSE_BUTTONS.keys()),
                          state="readonly", width=14).pack(side="left")
+
         elif atype == "hybrid":
             self.add_key_var   = tk.StringVar(value="ctrl")
             self.add_mouse_var = tk.StringVar(value="left click")
@@ -812,7 +710,7 @@ class AutomatorApp(tk.Tk):
                      fg=C["subtext"], font=("Courier New", 8)).pack(side="left")
             tk.Entry(self.add_value_frame, textvariable=self.add_key_var,
                      bg=C["entry_bg"], fg=C["text"], insertbackground=C["text"],
-                     relief="flat", font=("Courier New", 9), width=8).pack(side="left", padx=2)
+                     relief="flat", font=("Courier New", 9), width=8, **bp).pack(side="left", padx=2)
             tk.Label(self.add_value_frame, text="+", bg=C["surface2"],
                      fg=C["accent"], font=("Courier New", 10, "bold")).pack(side="left", padx=2)
             ttk.Combobox(self.add_value_frame, textvariable=self.add_mouse_var,
@@ -824,12 +722,16 @@ class AutomatorApp(tk.Tk):
 
     def _add_action(self):
         atype = self.add_type_var.get()
+
+        # FIX 4: read from StringVars (set by _build_value_input), not a removed widget
         if atype == "key":
-            val = self.add_key_entry.get().strip()
+            val = getattr(self, "add_key_var", tk.StringVar(value="")).get().strip()
         elif atype == "mouse":
-            val = self.add_mouse_var.get().strip()
-        else:
-            val = f"{self.add_key_var.get().strip()}|{self.add_mouse_var.get().strip()}"
+            val = getattr(self, "add_mouse_var", tk.StringVar(value="left click")).get().strip()
+        else:  # hybrid
+            key_p   = getattr(self, "add_key_var",   tk.StringVar(value="ctrl")).get().strip()
+            mouse_p = getattr(self, "add_mouse_var",  tk.StringVar(value="left click")).get().strip()
+            val = f"{key_p}|{mouse_p}"
 
         if not val:
             messagebox.showwarning("Invalid", "Please specify a value.")
@@ -842,11 +744,9 @@ class AutomatorApp(tk.Tk):
             looped=self.add_loop_var.get(),
             repeat=self.add_repeat_var.get(),
             parallel=self.add_parallel_var.get(),
-        
-            # NEW (16/4/26)
-            true_seq=getattr(self, "add_true_seq_var", tk.BooleanVar()).get(),
-            spam_count=getattr(self, "add_spam_count_var", tk.IntVar(value=1)).get(),
-            spam_delay=getattr(self, "add_spam_delay_var", tk.IntVar(value=0)).get()
+            true_seq=self.add_true_seq_var.get(),
+            spam_count=self.add_spam_count_var.get(),
+            spam_delay=self.add_spam_delay_var.get(),
         )
         self.macro_actions.append(action)
         self._refresh_macro_list()
@@ -857,49 +757,36 @@ class AutomatorApp(tk.Tk):
             w.destroy()
         for i, action in enumerate(self.macro_actions):
             row_bg = C["surface"] if i % 2 == 0 else C["surface2"]
+            if getattr(action, "parallel", False):
+                row_bg = C["entry_bg"] if i % 2 == 0 else "#0f0f1a"
             row = tk.Frame(self.macro_list_inner, bg=row_bg)
             row.pack(fill="x")
 
-            def mk_lbl(text, w=12, fg=None):
-                return tk.Label(row, text=str(text), bg=row_bg,
+            def mk_lbl(text, w=12, fg=None, bg=row_bg):
+                return tk.Label(row, text=str(text), bg=bg,
                                 fg=fg or C["text"], font=("Courier New", 9),
                                 width=w, anchor="w")
 
-            # Highlight row if parallel
-            if getattr(action, "parallel", False):
-                row_bg = C["entry_bg"] if i % 2 == 0 else "#0f0f1a"
-                row.configure(bg=row_bg)
-
             mk_lbl(i+1, 3).pack(side="left", padx=4, pady=3)
-            color = {"key": C["accent"], "mouse": C["accent2"], "hybrid": C["yellow"]}.get(action.action_type, C["text"])
+            color = {"key": C["accent"], "mouse": C["accent2"], "hybrid": C["yellow"]}.get(
+                action.action_type, C["text"])
             mk_lbl(action.action_type.upper(), 8, color).pack(side="left", padx=4)
             mk_lbl(action.value, 18).pack(side="left", padx=4)
             mk_lbl(action.interval_ms, 11).pack(side="left", padx=4)
-            mk_lbl("✓" if action.looped else "—", 5, C["green"] if action.looped else C["subtext"]).pack(side="left", padx=4)
+            mk_lbl("✓" if action.looped else "—", 5,
+                   C["green"] if action.looped else C["subtext"]).pack(side="left", padx=4)
             mk_lbl(action.repeat if not action.looped else "∞", 7).pack(side="left", padx=4)
-            is_par = getattr(action, "parallel", False)
-            is_true = getattr(action, "true_seq", False)
-            
-            if is_par:
-                txt = "PAR"
-                color = C["yellow"]
-            elif is_true:
-                txt = "B-SEQ"
-                color = C["green"]
-            else:
-                txt = "SEQ"
-                color = C["subtext"]
-            
-            mk_lbl(txt, 8, color).pack(side="left", padx=4)
 
-            # Delete btn
+            is_par  = getattr(action, "parallel", False)
+            is_bseq = getattr(action, "true_seq", False)
+            mode_txt   = "PAR"   if is_par  else ("B-SEQ" if is_bseq else "SEQ")
+            mode_color = C["yellow"] if is_par else (C["green"] if is_bseq else C["subtext"])
+            mk_lbl(mode_txt, 8, mode_color).pack(side="left", padx=4)
+
             idx = i
             tk.Button(row, text="✕", bg=row_bg, fg=C["red"],
-                      font=("Courier New", 9, "bold"), relief="flat",
-                      cursor="hand2",
+                      font=("Courier New", 9, "bold"), relief="flat", cursor="hand2",
                       command=lambda x=idx: self._delete_action(x)).pack(side="right", padx=8)
-
-            # Move up/down
             tk.Button(row, text="↓", bg=row_bg, fg=C["subtext"],
                       font=("Courier New", 9), relief="flat", cursor="hand2",
                       command=lambda x=idx: self._move_action(x, 1)).pack(side="right", padx=2)
@@ -925,7 +812,7 @@ class AutomatorApp(tk.Tk):
         else:
             self.macro_repeat_spin.config(state="normal")
 
-    # ──────── SETTINGS TAB ────────
+    # ── SETTINGS TAB ──
     def _build_settings_tab(self):
         C = self.C
         tab = self._tab_settings
@@ -936,35 +823,27 @@ class AutomatorApp(tk.Tk):
         tk.Label(outer, text="SETTINGS", bg=C["bg"], fg=C["accent"],
                  font=("Courier New", 12, "bold")).pack(anchor="w", pady=(0,12))
 
-        # Keybinds section - Added \n to the title
         kb_card = tk.LabelFrame(outer, text="\n  KEYBINDS  ", bg=C["surface"],
-                                 fg=C["accent"], font=("Courier New", 9, "bold"),
-                                 labelanchor="nw",
-                                 highlightbackground=C["border"], highlightthickness=1,
-                                 bd=0, relief="flat", padx=14, pady=10)
+                                fg=C["accent"], font=("Courier New", 9, "bold"),
+                                labelanchor="nw", highlightbackground=C["border"],
+                                highlightthickness=1, bd=0, relief="flat", padx=14, pady=10)
         kb_card.pack(fill="x", pady=(0,10))
-
-        # Play
         self._build_keybind_row(kb_card, "Play Shortcut", "shortcut_play", row=0)
-        # Stop
         self._build_keybind_row(kb_card, "Stop Shortcut", "shortcut_stop", row=1)
 
-        # General section
         gen_card = tk.LabelFrame(outer, text="\n  GENERAL  ", bg=C["surface"],
-                                  fg=C["accent"], font=("Courier New", 9, "bold"),
-                                  labelanchor="nw",
-                                  highlightbackground=C["border"], highlightthickness=1,
-                                  bd=0, relief="flat", padx=14, pady=10)
+                                 fg=C["accent"], font=("Courier New", 9, "bold"),
+                                 labelanchor="nw", highlightbackground=C["border"],
+                                 highlightthickness=1, bd=0, relief="flat", padx=14, pady=10)
         gen_card.pack(fill="x", pady=(0,10))
 
-        # Theme
         tk.Label(gen_card, text="Theme", bg=C["surface"], fg=C["subtext"],
                  font=("Courier New", 8)).grid(row=0, column=0, sticky="w", pady=4)
         self.theme_var = tk.StringVar(value=self.config_data.get("theme", "dark"))
         ttk.Combobox(gen_card, textvariable=self.theme_var,
-                     values=["dark", "light"], state="readonly", width=12).grid(row=0, column=1, padx=12, sticky="w")
+                     values=["dark", "light"], state="readonly", width=12).grid(
+                         row=0, column=1, padx=12, sticky="w")
 
-        # Default interval
         tk.Label(gen_card, text="Default Interval (ms)", bg=C["surface"], fg=C["subtext"],
                  font=("Courier New", 8)).grid(row=1, column=0, sticky="w", pady=4)
         self.def_interval_var = tk.IntVar(value=self.config_data["default_interval_ms"])
@@ -973,7 +852,6 @@ class AutomatorApp(tk.Tk):
                    buttonbackground=C["surface2"], relief="flat",
                    font=("Courier New", 9)).grid(row=1, column=1, padx=12, sticky="w")
 
-        # Default start delay
         tk.Label(gen_card, text="Default Start Delay (ms)", bg=C["surface"], fg=C["subtext"],
                  font=("Courier New", 8)).grid(row=2, column=0, sticky="w", pady=4)
         self.def_delay_var = tk.IntVar(value=self.config_data["start_delay_ms"])
@@ -982,12 +860,10 @@ class AutomatorApp(tk.Tk):
                    buttonbackground=C["surface2"], relief="flat",
                    font=("Courier New", 9)).grid(row=2, column=1, padx=12, sticky="w")
 
-        # Save btn
         tk.Button(outer, text="💾  SAVE SETTINGS", bg=C["accent"], fg="#fff",
                   font=("Courier New", 10, "bold"), relief="flat",
                   padx=16, pady=6, cursor="hand2",
                   command=self._save_settings).pack(anchor="w", pady=8)
-
         tk.Label(outer, text="Note: Theme changes require restart",
                  bg=C["bg"], fg=C["subtext"], font=("Courier New", 8)).pack(anchor="w")
 
@@ -996,39 +872,26 @@ class AutomatorApp(tk.Tk):
         tk.Label(parent, text=label, bg=C["surface"], fg=C["text"],
                  font=("Courier New", 9), width=22, anchor="w").grid(
                      row=row, column=0, padx=4, pady=6, sticky="w")
-
         var = tk.StringVar(value=self.config_data[cfg_key])
         entry = tk.Entry(parent, textvariable=var, bg=C["entry_bg"], fg=C["accent"],
                          insertbackground=C["accent"], relief="flat",
                          font=("Courier New", 10, "bold"), width=12,
                          readonlybackground=C["entry_bg"])
         entry.grid(row=row, column=1, padx=8, pady=6, sticky="w")
-
         capture_btn = tk.Button(parent, text="CAPTURE", bg=C["surface2"], fg=C["text"],
-                                 font=("Courier New", 8), relief="flat", padx=8,
-                                 cursor="hand2")
+                                font=("Courier New", 8), relief="flat", padx=8, cursor="hand2")
         capture_btn.grid(row=row, column=2, padx=4)
         capture_btn.configure(command=lambda e=entry, v=var, b=capture_btn, k=cfg_key:
                                self._start_capture(e, v, b, k))
-
-        # Store var reference
         setattr(self, f"_kbvar_{cfg_key}", var)
 
     def _start_capture(self, entry, var, btn, cfg_key):
         C = self.C
         btn.config(text="Press any key...", bg=C["yellow"], fg=C["bg"])
-        self._capture_target = cfg_key
-        self._capture_var    = var
-        self._capture_btn    = btn
 
         def on_key(event):
             key = event.keysym
-            if key.startswith("F") and key[1:].isdigit():
-                name = key.upper()
-            elif len(key) == 1:
-                name = key.upper()
-            else:
-                name = key.upper()
+            name = key.upper()
             var.set(name)
             self.config_data[cfg_key] = name
             btn.config(text="CAPTURE", bg=C["surface2"], fg=C["text"])
@@ -1039,36 +902,31 @@ class AutomatorApp(tk.Tk):
         self.focus_set()
 
     def _save_settings(self):
-        C = self.C
         for k in ["shortcut_play", "shortcut_stop"]:
             var = getattr(self, f"_kbvar_{k}", None)
             if var:
                 self.config_data[k] = var.get()
         self.config_data["theme"]               = self.theme_var.get()
         self.config_data["default_interval_ms"] = self.def_interval_var.get()
-        self.config_data["start_delay_ms"]       = self.def_delay_var.get()
+        self.config_data["start_delay_ms"]      = self.def_delay_var.get()
         save_config(self.config_data)
         self._update_shortcut_label()
         self._setup_hotkeys()
         messagebox.showinfo("Saved", "Settings saved successfully!")
+
     def _update_shortcut_label(self):
         self._shortcut_info_lbl.config(
             text=f"[{self.config_data['shortcut_play']}] play  [{self.config_data['shortcut_stop']}] stop")
 
-    # ──────── HOTKEYS ────────
     def _setup_hotkeys(self):
         if hasattr(self, '_hotkey_listener') and self._hotkey_listener:
             self._hotkey_listener.stop()
         def get_keys():
             return (self.config_data["shortcut_play"], self.config_data["shortcut_stop"])
         self._hotkey_listener = HotkeyListener(
-            play_cb=self._play,
-            stop_cb=self._stop,
-            get_keys=get_keys
-        )
+            play_cb=self._play, stop_cb=self._stop, get_keys=get_keys)
         self._hotkey_listener.start()
 
-    # ──────── PLAY / STOP ────────
     def _play(self):
         if self.running:
             return
@@ -1076,26 +934,25 @@ class AutomatorApp(tk.Tk):
         self.running = True
         self._set_ui_running(True)
 
-        if tab == 0:  # autoclicker
-            btn_str = self.ac_button_var.get().lower()
+        if tab == 0:
+            btn_str  = self.ac_button_var.get().lower()
             interval = max(1, self.ac_interval_var.get())
             looped   = self.ac_loop_var.get()
             repeat   = self.ac_repeat_var.get()
             delay    = self.ac_delay_var.get()
             self.executor.run_autoclicker(btn_str, interval, looped, repeat, delay)
 
-        elif tab == 1:  # macro
+        elif tab == 1:
             if not self.macro_actions:
                 messagebox.showwarning("Empty Macro", "Add at least one action to the macro.")
                 self.running = False
                 self._set_ui_running(False)
                 return
-            looped  = self.macro_loop_var.get()
-            repeat  = self.macro_repeat_var.get()
-            delay   = self.macro_delay_var.get()
+            looped = self.macro_loop_var.get()
+            repeat = self.macro_repeat_var.get()
+            delay  = self.macro_delay_var.get()
             self.executor.run_macro(self.macro_actions, looped, repeat, delay)
 
-        # Poll for completion
         self._poll_running()
 
     def _poll_running(self):
@@ -1133,7 +990,6 @@ class AutomatorApp(tk.Tk):
         self.destroy()
 
 
-# ─────────────────────────────────────────────
 if __name__ == "__main__":
     app = AutomatorApp()
     app.mainloop()
